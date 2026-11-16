@@ -8,7 +8,7 @@
 <title>BiliPicks 电视版</title>
 <!--
   BiliPicks 电视版：给电视、投影仪用的遥控器界面（方向键 + OK + 返回）。
-  数据和网页版是同一份：data.js，看完进度也共用（同一个 localStorage）。
+  数据和网页版是同一份：data.js?v=20261116v2，看完进度也共用（同一个 localStorage）。
   电视、投影仪自带的浏览器内核常常很老（极米投影仪是 Chrome 66），所以这个文件只用 ES2019 语法，
   CSS 不用 aspect-ratio / inset / gap(flex) / min() / color-mix 这些新写法。
   键盘也能用：方向键、Enter、Esc（或退格）、空格。
@@ -167,7 +167,7 @@ h1,h2,h3,p{margin:0}
 </section>
 <div class="toast" id="toast"></div>
 
-<script src="data.js?v=20261116"></script>
+<script src="data.js?v=20261116v2"></script>
 <script>
 'use strict';
 // ---------- 工具 ----------
@@ -220,8 +220,8 @@ function tick() {
 }
 
 // ---------- 数据 ----------
-// 网站版数据内嵌在 index.html；开源版用 <script src="data.js"> 先加载好 DATA
-// （data.js 里是顶层 const，不挂在 window 上，所以用 typeof 判断）
+// 网站版数据内嵌在 index.html；开源版用 <script src="data.js?v=20261116v2"> 先加载好 DATA
+// （data.js?v=20261116v2 里是顶层 const，不挂在 window 上，所以用 typeof 判断）
 function loadData() {
   if (typeof DATA !== 'undefined') return Promise.resolve(DATA);
   return fetch('./', {cache: 'no-cache'}).then(function (r) { return r.text(); }).then(function (t) {
