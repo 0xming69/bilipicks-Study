@@ -459,7 +459,11 @@ body.tv .tv-bar{position:fixed;left:0;right:0;bottom:0;height:60px;z-index:61;di
       <p>2026-11-08 整理频道与代表作。11-09 按小升初重新筛选，加入 AI 入门。11-10 加入成长路线和频道榜。11-12 路线重排成 9 关，开头先看 AI 有多厉害，加入卡帕西、李宏毅、吴恩达、StatQuest 等 16 条和每关的动手任务；页面改成浅色，播放页支持上滑切换。</p>
       <p>目录思路参考 <a href="https://karpathy.ai/tristan-tube/" target="_blank" rel="noopener noreferrer">TristanTube</a>：人来挑，不靠推荐。本站不是 B 站官方产品。</p>
       <p id="about-credit"></p>
-      <p>BiliPicks 是开源项目，可以复制一份改成你自己的清单：改 <code>data.js?v=20261116v4"watch" id="view-watch" hidden>
+      <p>BiliPicks 是开源项目，可以复制一份改成你自己的清单：改 <code>data.js</code> 就行。</p>
+    </div>
+  </section>
+
+  <section class="watch" id="view-watch" hidden>
     <div class="feed-top">
       <button type="button" class="icon-btn" id="feed-back" aria-label="返回">
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>
@@ -501,7 +505,7 @@ body.tv .tv-bar{position:fixed;left:0;right:0;bottom:0;height:60px;z-index:61;di
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="data.js?v=20261116v4"></script>
+<script src="data.js?v=20261116v5"></script>
 <script>
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -1197,4 +1201,72 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------- 封面兜底 ----------
-// 封面平时由 update.py 写进 data.js?v=20261116v4
+// 封面平时由 update.py 写进 data.js。万一哪条没有，就在访客浏览器里用 JSONP 现查：
+// api.bilibili.com 不给 CORS 头，fetch 会被拦；服务端代理（包括 Cloudflare Workers）会被 B 站返回 -412。
+// 封面加载失败就去掉 <img>，露出底下的渐变色块。error 事件不冒泡，所以在捕获阶段监听。
+document.addEventListener('error', e => {
+  const img = e.target;
+  if (img.matches && img.matches('img.cover')) img.remove();
+}, true);
+const COVER_CACHE_KEY = 'bilipicks-covers-v1';
+let jsonpSeq = 0;
+function jsonp(url, timeoutMs = 8000) {
+  return new Promise((resolve, reject) => {
+    const cb = `__bilipicksCover${++jsonpSeq}`;
+    const script = document.createElement('script');
+    const timer = setTimeout(() => finish(new Error('timeout')), timeoutMs);
+    function finish(err, data) {
+      clearTimeout(timer);
+      window[cb] = () => {}; // 迟到的响应不能撞上未定义的回调
+      script.remove();
+      err ? reject(err) : resolve(data);
+    }
+    window[cb] = data => finish(null, data);
+    script.onerror = () => finish(new Error('script load failed'));
+    script.src = `${url}&jsonp=jsonp&callback=${cb}`;
+    document.head.appendChild(script);
+  });
+}
+async function fetchCoverUrl(bvid) {
+  try {
+    const j = await jsonp(`https://api.bilibili.com/x/web-interface/view?bvid=${encodeURIComponent(bvid)}`);
+    let pic = j && j.code === 0 && j.data && j.data.pic;
+    if (!pic) return null;
+    if (pic.startsWith('//')) pic = 'https:' + pic;
+    if (pic.startsWith('http://')) pic = 'https://' + pic.slice(7);
+    const u = new URL(pic);
+    if (!/(^|\.)(hdslb|biliimg)\.com$/.test(u.hostname)) return null;
+    return u.origin + u.pathname + '@672w_378h_1c.webp'; // CDN 现场缩图：约 120KB → 约 20KB
+  } catch {
+    return null;
+  }
+}
+async function hydrateCovers() {
+  const cache = store.get(COVER_CACHE_KEY, {}) || {};
+  const missing = DATA.videos.filter(v => !v.dead && !v.cover);
+  if (!missing.length) return;
+  let i = 0;
+  async function worker() {
+    while (i < missing.length) {
+      const v = missing[i++];
+      v.cover = cache[v.id] || await fetchCoverUrl(v.id) || '';
+      if (v.cover) cache[v.id] = v.cover;
+    }
+  }
+  await Promise.all(Array.from({length: 4}, worker));
+  store.set(COVER_CACHE_KEY, cache);
+  if (state.view === 'home' || state.view === 'path') render();
+}
+
+// ---------- 启动 ----------
+applyTheme();
+{
+  const h = parseHash();
+  if (h.view === 'watch') prepareWatch(h.id);
+  state.view = h.view;
+  render();
+}
+hydrateCovers();
+</script>
+</body>
+</html>

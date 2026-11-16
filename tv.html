@@ -8,7 +8,16 @@
 <title>BiliPicks 电视版</title>
 <!--
   BiliPicks 电视版：给电视、投影仪用的遥控器界面（方向键 + OK + 返回）。
-  数据和网页版是同一份：data.js?v=20261116v4"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Source Han Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  数据和网页版是同一份：data.js，看完进度也共用（同一个 localStorage）。
+  电视、投影仪自带的浏览器内核常常很老（极米投影仪是 Chrome 66），所以这个文件只用 ES2019 语法，
+  CSS 不用 aspect-ratio / inset / gap(flex) / min() / color-mix 这些新写法。
+  键盘也能用：方向键、Enter、Esc（或退格）、空格。
+-->
+<style>
+*{box-sizing:border-box}
+html{font-size:1.25vw;background:#0b1220;overflow:hidden}
+body{margin:0;overflow:hidden;height:100vh;color:#eef3fb;background:#0b1220;
+  font-family:"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Source Han Sans SC","Microsoft YaHei",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;cursor:none}
 h1,h2,h3,p{margin:0}
 .bg{position:fixed;top:0;left:0;right:0;bottom:0;z-index:-1;
@@ -158,7 +167,7 @@ h1,h2,h3,p{margin:0}
 </section>
 <div class="toast" id="toast"></div>
 
-<script src="data.js?v=20261116v4"></script>
+<script src="data.js?v=20261116v5"></script>
 <script>
 'use strict';
 // ---------- 工具 ----------
@@ -211,8 +220,47 @@ function tick() {
 }
 
 // ---------- 数据 ----------
-// 网站版数据内嵌在 index.html；开源版用 <script src="data.js?v=20261116v4"> 先加载好 DATA
-// （data.js?v=20261116v4"ok">✓ 看过</span>' : '';
+// 网站版数据内嵌在 index.html；开源版用 <script src="data.js"> 先加载好 DATA
+// （data.js 里是顶层 const，不挂在 window 上，所以用 typeof 判断）
+function loadData() {
+  if (typeof DATA !== 'undefined') return Promise.resolve(DATA);
+  return fetch('./', {cache: 'no-cache'}).then(function (r) { return r.text(); }).then(function (t) {
+    var m = t.match(/^const DATA = (\{.*\});$/m);
+    if (!m) throw new Error('no DATA');
+    return JSON.parse(m[1]);
+  });
+}
+
+var D, byId = {}, stages = [], pathItems = [], pathInfo = {};
+function prepare(data) {
+  D = data;
+  D.videos.forEach(function (v) { byId[v.id] = v; });
+  var path = D.path || {stages: []};
+  stages = path.stages.map(function (st, si) {
+    var s = {no: si + 1, name: st.name, icon: st.icon || '', age: st.age || '', later: !!st.later, hue: HUES[si % 9], hue2: HUES2[si % 9], vids: [], notes: {}};
+    st.items.forEach(function (it) {
+      var v = byId[it.id];
+      if (!v || v.dead) return;
+      s.vids.push(v);
+      pathInfo[v.id] = {stage: s.no, step: s.vids.length, note: it.note};
+      pathItems.push(v);
+    });
+    return s;
+  });
+}
+var stageOf = function (v) { return v && pathInfo[v.id] ? stages[pathInfo[v.id].stage - 1] : null; };
+var doneCount = function (list) { return list.filter(function (v) { return isDone(v.id); }).length; };
+var nextUndone = function () { return pathItems.filter(function (v) { return !isDone(v.id); })[0] || pathItems[0]; };
+
+// ---------- 首页 ----------
+// rows[r] = {el, items:[tile 元素], list, ctx}；第 0 行是豆腐块（二维，用位置找邻居）
+var rows = [], focus = {r: 0, c: 0}, rowCol = {}, homeY = 0;
+
+function cardHTML(v, i, ctxPath) {
+  var pi = pathInfo[v.id], st = stageOf(v);
+  var title = ctxPath && pi ? pi.note : v.title;
+  var sub = ctxPath && pi ? v.title : who(v) + ' · ' + lenLabel(v);
+  var badge = isDone(v.id) ? '<span class="ok">✓ 看过</span>' : '';
   var step = ctxPath && pi ? '<span class="step" style="--h:' + st.hue + '">第 ' + pi.step + ' 步</span>' : '';
   return '<div class="card' + (isDone(v.id) ? ' done' : '') + '" data-i="' + i + '">' +
     '<div class="tile">' + (v.cover ? '<img data-src="' + esc(coverUrl(v)) + '" alt="" referrerpolicy="no-referrer">' : '') +
