@@ -8,7 +8,7 @@
 <title>BiliPicks 电视版</title>
 <!--
   BiliPicks 电视版：给电视、投影仪用的遥控器界面（方向键 + OK + 返回）。
-  数据和网页版是同一份：data.js?v=20261116v2"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Source Han Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  数据和网页版是同一份：data.js?v=20261116v4"PingFang SC","HarmonyOS Sans SC","MiSans","Noto Sans CJK SC","Source Han Sans SC","Microsoft YaHei",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;cursor:none}
 h1,h2,h3,p{margin:0}
 .bg{position:fixed;top:0;left:0;right:0;bottom:0;z-index:-1;
@@ -158,7 +158,7 @@ h1,h2,h3,p{margin:0}
 </section>
 <div class="toast" id="toast"></div>
 
-<script src="data.js?v=20261116v2"></script>
+<script src="data.js?v=20261116v4"></script>
 <script>
 'use strict';
 // ---------- 工具 ----------
@@ -211,8 +211,8 @@ function tick() {
 }
 
 // ---------- 数据 ----------
-// 网站版数据内嵌在 index.html；开源版用 <script src="data.js?v=20261116v2"> 先加载好 DATA
-// （data.js?v=20261116v2"ok">✓ 看过</span>' : '';
+// 网站版数据内嵌在 index.html；开源版用 <script src="data.js?v=20261116v4"> 先加载好 DATA
+// （data.js?v=20261116v4"ok">✓ 看过</span>' : '';
   var step = ctxPath && pi ? '<span class="step" style="--h:' + st.hue + '">第 ' + pi.step + ' 步</span>' : '';
   return '<div class="card' + (isDone(v.id) ? ' done' : '') + '" data-i="' + i + '">' +
     '<div class="tile">' + (v.cover ? '<img data-src="' + esc(coverUrl(v)) + '" alt="" referrerpolicy="no-referrer">' : '') +
